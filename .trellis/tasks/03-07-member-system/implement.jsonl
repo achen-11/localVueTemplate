@@ -1,5 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/backend/database.md", "reason": "数据库模型定义规范"}
-{"file": ".trellis/spec/backend/api-core.md", "reason": "API 端点开发规范"}
