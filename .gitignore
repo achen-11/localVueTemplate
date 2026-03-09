@@ -148,3 +148,6 @@ src/js
 src/css
 
 kooboo.d.ts
+
+# Build manifest
+.build-manifest.json
