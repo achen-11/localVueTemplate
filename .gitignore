@@ -143,9 +143,13 @@ kooboo.setup.ts
 
 .DS_Store
 
-src/page
-src/js
-src/css
+# Keep empty dirs (use .gitkeep); ignore their contents
+src/page/*
+!src/page/.gitkeep
+src/js/*
+!src/js/.gitkeep
+src/css/*
+!src/css/.gitkeep
 
 kooboo.d.ts
 
