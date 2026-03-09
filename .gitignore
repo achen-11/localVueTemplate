@@ -155,3 +155,5 @@ kooboo.d.ts
 
 # Build manifest
 .build-manifest.json
+
+.cursor
