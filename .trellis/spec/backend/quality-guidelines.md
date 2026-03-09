@@ -8,6 +8,9 @@
 
 - [API 规范检查](#api-规范检查) - API 文件规范
 - [数据库规范检查](#数据库规范检查) - 数据库操作规范
+- [SQL 语法检测](#sql-语法检测) - SQL 语法和安全性检查
+- [三层架构检查](#三层架构检查) - Model/Services/API 架构规范
+- [引用路径检查](#引用路径检查) - kooboo-cli 特殊路径规范
 - [路由规范检查](#路由规范检查) - 路由定义规范
 - [安全规范检查](#安全规范检查) - 安全相关检查
 - [代码结构检查](#代码结构检查) - 目录结构规范
@@ -78,6 +81,266 @@ const users = User.findAll({})
 
 // ❌ 错误：不需要 await
 const user = await User.findById(id)
+```
+
+---
+
+## SQL 语法检测
+
+| 检查项 | 说明 | 状态 |
+|--------|------|------|
+| 原生 SQL 防注入 | 使用参数化查询，避免字符串拼接 | [ ] |
+
+### 原生 SQL 防注入
+
+KSQL 支持原生 SQL 查询，但必须使用**参数化查询**防止 SQL 注入：
+
+**1. k.DB.sqlite.query（使用 @参数名）**
+
+```typescript
+// ✅ 正确：使用参数化查询
+const results = k.DB.sqlite.query(
+    'SELECT * FROM products WHERE price > @minPrice AND category = @category',
+    { minPrice: 100, category: 'electronics' }
+)
+
+// ✅ 正确：使用参数化查询（单参数）
+const user = k.DB.sqlite.query(
+    'SELECT * FROM users WHERE email = @email',
+    { email: userEmail }
+)
+
+// ❌ 错误：字符串拼接（可能导致 SQL 注入）
+const results = k.DB.sqlite.query(
+    'SELECT * FROM products WHERE price > ' + minPrice
+)
+
+// ❌ 错误：模板字符串拼接
+const results = k.DB.sqlite.query(
+    `SELECT * FROM products WHERE category = '${category}'`
+)
+```
+
+**2. ksql.query（使用 ? 占位符）**
+
+```typescript
+// ✅ 正确：使用 ? 占位符
+const results = ksql.query(
+    'SELECT * FROM users WHERE age > ? AND status = ?',
+    [18, 'active']
+)
+
+// ❌ 错误：字符串拼接
+const results = ksql.query(
+    'SELECT * FROM users WHERE age > ' + age
+)
+```
+
+**3. 推荐使用 ORM**
+
+```typescript
+// ✅ 正确：k_sqlite ORM 使用 page + pageSize 分页
+const transactions = Transaction.findAll(where, {
+    order: [{ prop: 'createdAt', order: 'DESC' }],
+    page: 1,
+    pageSize: 20
+})
+
+// ✅ 正确：条件查询
+const users = User.findAll({ isActive: true })
+```
+
+### 快速检查脚本
+
+```bash
+# 检查是否有 SQL 字符串拼接（不安全写法）
+grep -r "SELECT.*\+.*FROM\|SELECT.*\`\${" api/
+
+# 检查 k.DB.sqlite 是否使用了参数化查询
+grep -r "k.DB.sqlite.query.*@" api/
+
+# 检查 ksql.query 是否使用了 ? 占位符
+grep -r "ksql.query" api/
+```
+
+---
+
+## KSQL ORM 支持的功能
+
+```typescript
+// ✅ 正确：ORM 支持排序
+const transactions = Transaction.findAll(where, {
+    order: [{ prop: 'createdAt', order: 'DESC' }],
+    page: 1,
+    pageSize: 10
+})
+
+// ✅ 正确：ORM 支持分页
+const products = Product.findAll({
+    limit: 20,
+    offset: 0
+})
+
+// ✅ 正确：ORM 支持条件查询
+const users = User.findAll({
+    where: { status: 'active' }
+})
+```
+
+---
+
+## 三层架构检查
+
+| 检查项 | 说明 | 状态 |
+|--------|------|------|
+| Model 层 | 数据模型定义在 `code/Models/` | [ ] |
+| Services 层 | 业务逻辑封装在 `code/Services/` | [ ] |
+| API 层 | 接口定义在 `api/` 目录 | [ ] |
+| 层级调用顺序 | API 调用 Services，Services 调用 Model | [ ] |
+
+### 三层架构示例
+
+```
+code/
+├── Models/           # ✅ 数据模型层
+│   ├── User.ts
+│   ├── Product.ts
+│   └── index.ts
+├── Services/        # ✅ 业务逻辑层
+│   ├── UserService.ts
+│   ├── ProductService.ts
+│   └── OrderService.ts
+└── Utils/           # ✅ 工具函数层
+    └── DateUtils.ts
+
+api/                  # ✅ 接口层
+├── user.ts
+├── product.ts
+└── order.ts
+```
+
+### 正确分层示例
+
+```typescript
+// code/Models/User.ts
+export const User = k.db.model('User', {
+    name: { type: k.dbTypes.STRING },
+    email: { type: k.dbTypes.STRING },
+    password: { type: k.dbTypes.STRING },
+    timestamps: true
+})
+
+// code/Services/UserService.ts
+import { User } from 'code/Models/index'
+
+export function findUserById(userId: string) {
+    return User.findById(userId)
+}
+
+export function createUser(data: { name: string; email: string; password: string }) {
+    const passwordHash = k.security.md5(data.password)
+    return User.create({
+        name: data.name,
+        email: data.email,
+        password: passwordHash
+    })
+}
+
+// api/user.ts
+// @k-url /api/user/{action}
+import { findUserById, createUser } from 'code/Services/UserService'
+
+k.api.get('info', () => {
+    const userId = k.request.queryString.userId
+    const user = findUserById(userId)
+    return { success: true, data: user }
+})
+
+k.api.post('create', () => {
+    const { name, email, password } = k.request.body
+    const user = createUser({ name, email, password })
+    return { success: true, data: user }
+})
+```
+
+### 错误分层示例
+
+```typescript
+// ❌ 错误：业务逻辑直接写在 API 文件中
+// api/user.ts
+k.api.get('info', () => {
+    const user = k.db.models.User.findById(userId)  // 业务逻辑混在 API 层
+    const passwordHash = k.security.md5(password)   // 加密逻辑也在 API 层
+    // ... 大量业务代码
+})
+
+// ✅ 正确：业务逻辑应该放在 Services 层
+// api/user.ts
+import { findUserById } from 'code/Services/UserService'
+
+k.api.get('info', () => {
+    const userId = k.request.queryString.userId
+    const user = findUserById(userId)  // 简洁的接口层
+    return { success: true, data: user }
+})
+```
+
+---
+
+## 引用路径检查
+
+| 检查项 | 说明 | 状态 |
+|--------|------|------|
+| Model 引用 | 使用 `code/Models/index` 或 `code/Models/具体文件名` | [ ] |
+| Services 引用 | 使用 `code/Services/具体文件名` | [ ] |
+| Utils 引用 | 使用 `code/Utils/具体文件名` | [ ] |
+| 禁止裸路径 | 禁止使用 `code/Models` 或 `code/Services` | [ ] |
+
+### 正确引用方式
+
+```typescript
+// ✅ 正确：有聚合文件时引用 index
+import { User, Product } from 'code/Models/index'
+
+// ✅ 正确：直接引用具体文件
+import { User } from 'code/Models/User'
+import { Product } from 'code/Models/Product'
+
+// ✅ 正确：Services 引用
+import { UserService } from 'code/Services/UserService'
+import { createOrder } from 'code/Services/OrderService'
+
+// ✅ 正确：Utils 引用
+import { formatDate } from 'code/Utils/DateUtils'
+import { validateEmail } from 'code/Utils/ValidationUtils'
+```
+
+### 错误引用方式
+
+```typescript
+// ❌ 错误：使用裸路径
+import { User } from 'code/Models'           // 禁止
+import { UserService } from 'code/Services'  // 禁止
+
+// ❌ 错误：使用错误的相对路径
+import { User } from '../Models/User'        // 禁止
+import { UserService } from '../Services/UserService'  // 禁止
+
+// ❌ 错误：使用 src 路径
+import { User } from 'src/code/Models/User'  // 禁止
+```
+
+### 快速检查脚本
+
+```bash
+# 检查 Model 引用是否正确
+grep -r "from 'code/Models'" api/ | grep -v "code/Models/index\|code/Models/"
+
+# 检查 Services 引用是否正确
+grep -r "from 'code/Services" api/
+
+# 检查是否有错误的裸路径引用
+grep -r "from 'code/Models'\|from 'code/Services'" api/
 ```
 
 ---
@@ -229,3 +492,7 @@ grep "from 'code/Models'" api/*.ts
 - [ ] 目录结构符合规范
 - [ ] 业务逻辑放在 `code/Services/` 目录
 - [ ] 通用工具函数放在 `code/Utils/` 目录
+- [ ] **SQL 语法**：原生 SQL 使用参数化查询，无字符串拼接
+- [ ] **三层架构**：遵循 Model -> Services -> API 分层结构
+- [ ] **引用路径**：使用正确的 `code/Models`、`code/Services`、`code/Utils` 路径
+- [ ] **引用路径**：没有使用裸路径（如 `code/Models`）
