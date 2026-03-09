@@ -98,8 +98,8 @@ project/                          # Kooboo 项目根目录
 // api/user.ts
 // @k-url /api/user/{action}
 
-// 引用 Model：有聚合用聚合文件路径（如 code/Models/index），无聚合用 code/Models/User
-import { User } from 'code/Models/index'
+// 引用 Model：直接使用具体文件路径（如 code/Models/User），禁止使用裸路径 code/Models
+import { User } from 'code/Models/User'
 
 k.api.get('user-info', () => {
     const userId = k.session.get('userId')
@@ -178,15 +178,12 @@ Gym-reservation/                # Kooboo 项目根目录
 
 ### Model 引用规则
 
-有聚合时用聚合文件路径（如 `code/Models/index`），无聚合时直接引用具体模型文件（如 `import { User } from 'code/Models/User'`）；**禁止**使用 `code/Models`（无文件名）。
+引用时**必须指定具体文件名**（如 `import { User } from 'code/Models/User'`），**禁止**使用不带文件名的裸路径 `code/Models`。
 
 ```typescript
-// 正确：有聚合
-import { User } from 'code/Models/index'
-import { Menu, MenuItem } from 'code/Models/index'
-
-// 正确：无聚合，直接引用具体文件
+// 正确：直接引用具体文件
 import { User } from 'code/Models/User'
+import { Menu, MenuItem } from 'code/Models/Menu'
 
 // 错误：禁止无文件名
 import { User } from 'code/Models'

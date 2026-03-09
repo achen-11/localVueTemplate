@@ -39,7 +39,7 @@ Kooboo 是一个 CMS + 应用开发平台，支持多种前端模式：
 // api/user.ts
 // @k-url /api/user/{action}
 
-import { User } from 'code/Models/index'
+import { User } from 'code/Models/User'
 
 // GET /api/user/info
 k.api.get('info', (userId: string) => {

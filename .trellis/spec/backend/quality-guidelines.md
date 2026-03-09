@@ -23,8 +23,7 @@
 |--------|------|------|
 | @k-url 路由声明 | API 文件顶部必须添加 `@k-url` 路由声明 | [ ] |
 | 路由格式正确 | 使用 `{action}` 占位符，如 `/api/user/{action}` | [ ] |
-| Model 引用路径 | 必须指定文件名，禁止 `code/Models` | [ ] |
-| 聚合文件引用 | 有聚合用 `code/Models/index`，无聚合用具体文件名 | [ ] |
+| Model 引用路径 | 必须指定具体文件名（如 `code/Models/User`），禁止 `code/Models` | [ ] |
 | API 合并 | 同一模块的接口应合并在一个文件中 | [ ] |
 | Query 参数 | 单资源 id 建议用 query 参数而非路径参数 | [ ] |
 
@@ -35,7 +34,7 @@
 // api/user.ts
 // @k-url /api/user/{action}
 
-import { User } from 'code/Models/index'
+import { User } from 'code/Models/User'
 
 k.api.get('info', () => {
     const userId = k.request.queryString.userId
@@ -44,7 +43,7 @@ k.api.get('info', () => {
 })
 
 // ❌ 错误：缺少 @k-url
-import { User } from 'code/Models/index'
+import { User } from 'code/Models/User'
 
 k.api.get('info', () => { ... })
 
@@ -205,7 +204,6 @@ code/
 ├── Models/           # ✅ 数据模型层
 │   ├── User.ts
 │   ├── Product.ts
-│   └── index.ts
 ├── Services/        # ✅ 业务逻辑层
 │   ├── UserService.ts
 │   ├── ProductService.ts
@@ -231,7 +229,7 @@ export const User = k.db.model('User', {
 })
 
 // code/Services/UserService.ts
-import { User } from 'code/Models/index'
+import { User } from 'code/Models/User'
 
 export function findUserById(userId: string) {
     return User.findById(userId)
@@ -291,7 +289,7 @@ k.api.get('info', () => {
 
 | 检查项 | 说明 | 状态 |
 |--------|------|------|
-| Model 引用 | 使用 `code/Models/index` 或 `code/Models/具体文件名` | [ ] |
+| Model 引用 | 使用 `code/Models/具体文件名`（如 `code/Models/User`） | [ ] |
 | Services 引用 | 使用 `code/Services/具体文件名` | [ ] |
 | Utils 引用 | 使用 `code/Utils/具体文件名` | [ ] |
 | 禁止裸路径 | 禁止使用 `code/Models` 或 `code/Services` | [ ] |
@@ -299,9 +297,6 @@ k.api.get('info', () => {
 ### 正确引用方式
 
 ```typescript
-// ✅ 正确：有聚合文件时引用 index
-import { User, Product } from 'code/Models/index'
-
 // ✅ 正确：直接引用具体文件
 import { User } from 'code/Models/User'
 import { Product } from 'code/Models/Product'
@@ -333,8 +328,8 @@ import { User } from 'src/code/Models/User'  // 禁止
 ### 快速检查脚本
 
 ```bash
-# 检查 Model 引用是否正确
-grep -r "from 'code/Models'" api/ | grep -v "code/Models/index\|code/Models/"
+# 检查是否存在裸路径 Model 引用（结果应为空）
+grep -r "from 'code/Models'" api/
 
 # 检查 Services 引用是否正确
 grep -r "from 'code/Services" api/
@@ -494,5 +489,5 @@ grep "from 'code/Models'" api/*.ts
 - [ ] 通用工具函数放在 `code/Utils/` 目录
 - [ ] **SQL 语法**：原生 SQL 使用参数化查询，无字符串拼接
 - [ ] **三层架构**：遵循 Model -> Services -> API 分层结构
-- [ ] **引用路径**：使用正确的 `code/Models`、`code/Services`、`code/Utils` 路径
+- [ ] **引用路径**：使用正确的 `code/Models/xxx`、`code/Services/xxx`、`code/Utils/xxx` 路径
 - [ ] **引用路径**：没有使用裸路径（如 `code/Models`）

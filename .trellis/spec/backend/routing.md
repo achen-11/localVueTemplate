@@ -213,14 +213,14 @@ k.api.get('get', (id: string) => {
 // api/user.ts
 // @k-url /api/user/{action}
 
-import { User } from 'code/Models/index'
+import { User } from 'code/Models/User'
 
 // GET /api/user/info
 k.api.get('info', () => {
     const userId = k.request.queryString.userId
-    constById(userId)
+    const user = User.findById(userId)
     return { success: true, data: user }
- user = User.find})
+})
 
 // POST /api/user/login
 k.api.post('login', (body) => {

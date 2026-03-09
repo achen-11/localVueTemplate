@@ -48,27 +48,13 @@ const Member = ksql.define('members', {
 export { Member }
 ```
 
-### 1.2 导出到 index.ts (可选)
-
-在 `code/Models/index.ts` 中统一导出:
-
-```typescript
-// code/Models/index.ts
-// 正确:使用 code/Models/ 前缀
-export { Member } from 'code/Models/Member'
-export { Coach } from 'code/Models/Coach'
-
-// 错误:相对路径
-// export { Member } from './Member'
-```
-
-### 1.3 路径规范
+### 1.2 路径规范
 
 | 类型 | 正确写法 | 错误写法 |
 |------|----------|----------|
 | Models 导出 | `code/Models/Member` | `./Member` |
 | Services 引用 | `code/Services/MemberService` | `../Services/MemberService` |
-| API 引用 Models | `code/Models/index` | `code/Models` |
+| API 引用 Models | `code/Models/Member` | `code/Models` |
 
 ---
 
@@ -128,14 +114,6 @@ export function updateMember(id: string, data: Partial<{ name: string; email: st
 }
 ```
 
-### 2.3 创建 Services index.ts
-
-```typescript
-// code/Services/index.ts
-export { createMember, getMemberById, getMemberByPhone, verifyPassword, updateMember } from 'code/Services/MemberService'
-// 继续添加其他 Service...
-```
-
 ---
 
 ## 第三步:创建 Utils 工具层(可选)
@@ -180,14 +158,6 @@ export function paginate<T = any>(items: T[], total: number, page: number, pageS
         pagination: { total, page, pageSize }
     }
 }
-```
-
-### 3.3 创建 Utils index.ts
-
-```typescript
-// code/Utils/index.ts
-export { success, fail, paginate, list, detail, affected } from 'code/Utils/ResponseUtils'
-export { formatDate, formatDateShort, formatDateTime, getRelativeTime } from 'code/Utils/DateUtils'
 ```
 
 ---
