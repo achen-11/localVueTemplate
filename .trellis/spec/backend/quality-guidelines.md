@@ -8,11 +8,14 @@
 
 - [API 规范检查](#api-规范检查) - API 文件规范
 - [数据库规范检查](#数据库规范检查) - 数据库操作规范
+- [ksql define 类型检查](#ksql-define-类型检查) - Model 定义规范
+- [findAll() 语法检查](#findall-语法检查) - 查询方法参数规范
 - [SQL 语法检测](#sql-语法检测) - SQL 语法和安全性检查
 - [三层架构检查](#三层架构检查) - Model/Services/API 架构规范
 - [引用路径检查](#引用路径检查) - kooboo-cli 特殊路径规范
 - [路由规范检查](#路由规范检查) - 路由定义规范
 - [安全规范检查](#安全规范检查) - 安全相关检查
+- [k.request.body 解析检查](#krequestbody-解析检查) - 请求体解析规范
 - [代码结构检查](#代码结构检查) - 目录结构规范
 
 ---
@@ -63,6 +66,85 @@ import { User } from 'code/Models'  // 禁止
 | 关联查询 | 使用 map 而非 Promise.all | [ ] |
 | timestamps | 建议添加 `timestamps: true` | [ ] |
 | 软删除 | 敏感数据建议启用 `softDelete: true` | [ ] |
+| ksql define 类型 | Model 定义必须使用 DataTypes 类型 | [ ] |
+| findAll() 参数 | findAll 必须传参，findAll({}) 正确，findAll() 错误 | [ ] |
+
+### ksql define 类型检查
+
+使用 k_sqlite ORM 定义 Model 时，必须使用 `DataTypes` 定义字段类型：
+
+```typescript
+// ✅ 正确：使用 DataTypes 定义类型
+import { ksql, DataTypes } from 'module/k_sqlite'
+
+const User = ksql.define('users', {
+    userName: {
+        type: DataTypes.String,
+        required: true
+    },
+    email: {
+        type: DataTypes.String,
+        unique: true,
+        index: true
+    },
+    age: {
+        type: DataTypes.Number
+    },
+    isActive: {
+        type: DataTypes.Boolean,
+        default: true
+    },
+    profile: {
+        type: DataTypes.Object
+    }
+}, {
+    timestamps: true,
+    softDelete: true
+})
+
+// ❌ 错误：直接使用字符串定义类型
+const User = ksql.define('users', {
+    userName: 'string',  // 错误：应该使用 DataTypes.String
+    age: 'number'       // 错误：应该使用 DataTypes.Number
+})
+
+// ❌ 错误：缺少 type 定义
+const User = ksql.define('users', {
+    userName: { required: true }  // 错误：缺少 type
+})
+
+// ❌ 错误：使用不存在的类型
+const User = ksql.define('users', {
+     createAt: {
+        type: DataTypes.Data,// 错误: 不存在Data类型
+        required: true
+    },
+})
+
+ 
+```
+
+### findAll() 语法检查
+
+`findAll()` 方法必须传入参数，至少需要传入空对象 `{}`：
+
+```typescript
+// ✅ 正确：传入空对象
+const users = User.findAll({})
+
+// ✅ 正确：传入查询条件
+const users = User.findAll({ isActive: true })
+
+// ✅ 正确：传入条件 + 查询选项
+const users = User.findAll({ isActive: true }, {
+    order: [{ prop: 'createdAt', order: 'DESC' }],
+    page: 1,
+    pageSize: 20
+})
+
+// ❌ 错误：不传参数（会报错）
+const users = User.findAll()  // 错误：缺少参数
+```
 
 ### 示例
 
@@ -379,6 +461,33 @@ grep -r "from 'code/Models'\|from 'code/Services'" api/
 | 敏感信息 | 不要在代码中硬编码密钥/密码 | [ ] |
 | CORS | 外部 API 调用注意跨域配置 | [ ] |
 | 输入验证 | 接收用户输入时进行验证 | [ ] |
+| k.request.body | 需要 JSON.parse 解析才能变成对象使用 | [ ] |
+
+### k.request.body 解析检查
+
+`k.request.body` 返回的是**字符串**，需要 `JSON.parse` 一下才能用：
+
+```typescript
+// ✅ 正确：使用 JSON.parse 解析 body
+k.api.post('create-user', () => {
+    const bodyStr = k.request.body
+    const body = JSON.parse(bodyStr) 
+    const { userName, password, email } = body
+    return { success: true, data: { userName } }
+})
+
+// ❌ 错误：直接使用 k.request.body（是字符串，未解析）
+k.api.post('create-user', () => {
+    const { userName, password } = k.request.body  // 错误：body 是字符串！
+    return { success: true }
+})
+
+// ❌ 错误：不解析直接访问属性
+k.api.post('create-user', () => {
+    const userName = k.request.body.userName  // 错误：Cannot read property 'userName' of string
+    return { success: true }
+})
+```
 
 ### 示例
 
@@ -471,6 +580,18 @@ grep "@k-url /" src/page/index.html
 
 # 检查是否使用了错误的 Model 引用
 grep "from 'code/Models'" api/*.ts
+
+# 检查 ksql define 是否使用 DataTypes（正确写法）
+grep -r "DataTypes\." code/Models/
+
+# 检查 ksql define 是否使用了字符串类型（错误写法）
+grep -r "type: 'string'\|type: 'number'\|type: 'boolean'" code/Models/
+
+# 检查 findAll() 是否没有传参（错误写法）
+grep -r "\.findAll()" code/Services/ code/Models/ api/
+
+# 检查 k.request.body 是否直接使用（未解析）
+grep -r "k.request.body\." api/
 ```
 
 ---
@@ -491,3 +612,6 @@ grep "from 'code/Models'" api/*.ts
 - [ ] **三层架构**：遵循 Model -> Services -> API 分层结构
 - [ ] **引用路径**：使用正确的 `code/Models/xxx`、`code/Services/xxx`、`code/Utils/xxx` 路径
 - [ ] **引用路径**：没有使用裸路径（如 `code/Models`）
+- [ ] **ksql define**：Model 定义使用 DataTypes 类型（如 `DataTypes.String`）
+- [ ] **findAll()**：调用时传入参数，`findAll({})` 正确，`findAll()` 错误
+- [ ] **k.request.body**：用JSON.parse 解析为对象去使用
