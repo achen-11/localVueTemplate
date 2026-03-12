@@ -11,6 +11,8 @@ const MODEL_RULES = {
 const SERVICE_RULES = {
   INVALID_IMPORT_PATH: "SERVICE-002",
   AWAIT_SYNC_KSQL: "SERVICE-003",
+  MONGO_STYLE_OPERATORS: "SERVICE-006",
+  MISSING_OPERATORS_IMPORT: "SERVICE-007",
 };
 
 const API_RULES = {
@@ -18,6 +20,10 @@ const API_RULES = {
   RAW_BODY_USAGE: "API-002",
   SQL_STRING_BUILD: "API-003",
   JWT_PARSE_REQUIRED: "API-004",
+  WRONG_QUERY_OBJECT: "API-007",
+  QUERYSTRING_TYPE_CONVERSION: "API-008",
+  REQUEST_ANY_USAGE: "API-009",
+  BODY_DIRECT_ASSERTION: "API-010",
 };
 
 function lineNumberFor(content, index) {
@@ -151,6 +157,38 @@ function runServiceRules(file, content) {
     );
   }
 
+  for (const match of content.matchAll(/\$(gte|lte|ne|contains|or)\b/g)) {
+    violations.push(
+      createViolation(
+        "service",
+        SERVICE_RULES.MONGO_STYLE_OPERATORS,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 MongoDB 风格操作符，不适用于 k_sqlite。",
+        "请改用 Operators，并使用 [GTE]/[LTE]/[NE]/[CONTAINS]/[OR]。",
+      ),
+    );
+  }
+
+  const usesOperatorTokens = /\[(GTE|LTE|NE|CONTAINS|OR)\]/.test(content);
+  const importsOperators =
+    /import\s*\{[^}]*\bOperators\b[^}]*\}\s*from\s*['"]module\/k_sqlite['"]/.test(content) ||
+    /import\s+Operators\s+from\s*['"]module\/k_sqlite['"]/.test(content);
+  if (usesOperatorTokens && !importsOperators) {
+    violations.push(
+      createViolation(
+        "service",
+        SERVICE_RULES.MISSING_OPERATORS_IMPORT,
+        "Blocker",
+        file,
+        1,
+        "检测到 Operators 用法但未导入 Operators。",
+        "请从 module/k_sqlite 导入 Operators 并解构所需操作符。",
+      ),
+    );
+  }
+
   return violations;
 }
 
@@ -199,6 +237,22 @@ function runApiRules(file, content) {
     );
   }
 
+  // k.request.body 虽可通过 unknown 桥接做类型断言，但若未 JSON.parse，
+  // 实际仍是字符串语义，属于 API-002。
+  for (const match of content.matchAll(/k\.request\.body\s+as\s+unknown\s+as\s+[A-Za-z_$][\w$]*/g)) {
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.RAW_BODY_USAGE,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到未解析的 k.request.body 类型桥接断言。",
+        "请先 JSON.parse(k.request.body) 后再进行类型收敛。",
+      ),
+    );
+  }
+
   const hasRawSqlCall = content.includes("k.DB.sqlite.query(") || content.includes("ksql.query(");
   const hasSqlConcatenation = /(SELECT|UPDATE|DELETE|INSERT).*(\+|\$\{)/i.test(content);
   if (hasRawSqlCall && hasSqlConcatenation) {
@@ -227,6 +281,118 @@ function runApiRules(file, content) {
         "请 JSON.parse(decodeResult) 并校验状态字段。",
       ),
     );
+  }
+
+  for (const match of content.matchAll(/k\.request\.query\b/g)) {
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.WRONG_QUERY_OBJECT,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 k.request.query，用法不符合 Kooboo 约定。",
+        "请使用 k.request.queryString 获取查询参数。",
+      ),
+    );
+  }
+
+  for (const match of content.matchAll(/k\.request\.body\s+as\s+any|:\s*any\b/g)) {
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.REQUEST_ANY_USAGE,
+        "Warning",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 any 类型参数，类型约束不足。",
+        "请为 body/query 参数定义明确的 interface/type。",
+      ),
+    );
+  }
+
+  for (const match of content.matchAll(/k\.request\.body\s+as\s+([A-Za-z_$][\w$]*)/g)) {
+    const assertedType = match[1];
+    if (["unknown", "any", "string"].includes(assertedType)) continue;
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.BODY_DIRECT_ASSERTION,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 k.request.body 直接断言为目标类型。",
+        "请先转为 unknown 再断言，或先 JSON.parse 后做类型收敛。",
+      ),
+    );
+  }
+
+  for (const match of content.matchAll(/const\s+\w+\s*:\s*([A-Za-z_$][\w$]*)\s*=\s*k\.request\.body\b/g)) {
+    const assignedType = match[1];
+    if (["unknown", "any", "string"].includes(assignedType)) continue;
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.BODY_DIRECT_ASSERTION,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 k.request.body 直接赋值到非 string 类型变量。",
+        "请先转为 unknown 再断言，或先 JSON.parse 后做类型收敛。",
+      ),
+    );
+  }
+
+  const hasNumericConversion = (identifier) =>
+    new RegExp(`\\b(parseInt|Number)\\s*\\(\\s*${identifier}\\b`).test(content);
+
+  const directNumericAssign = /const\s+(\w+)\s*=\s*k\.request\.queryString\.(page|pageSize|limit|offset)\b/g;
+  for (const match of content.matchAll(directNumericAssign)) {
+    const identifier = match[1];
+    if (hasNumericConversion(identifier)) continue;
+    violations.push(
+      createViolation(
+        "api",
+        API_RULES.QUERYSTRING_TYPE_CONVERSION,
+        "Warning",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 queryString 数值参数直接使用，可能存在类型隐式错误。",
+        "请使用 parseInt/Number 显式转换并设置默认值。",
+      ),
+    );
+  }
+
+  const destructureNumericAssign = /const\s*\{([^}]*)\}\s*=\s*k\.request\.queryString\b/g;
+  for (const match of content.matchAll(destructureNumericAssign)) {
+    const raw = match[1] ?? "";
+    const tokens = raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const numericIdentifiers = [];
+    for (const token of tokens) {
+      const [left, right] = token.split(":").map((x) => x.trim());
+      const key = left;
+      const alias = right || left;
+      if (["page", "pageSize", "limit", "offset"].includes(key)) {
+        numericIdentifiers.push(alias);
+      }
+    }
+    for (const identifier of numericIdentifiers) {
+      if (hasNumericConversion(identifier)) continue;
+      violations.push(
+        createViolation(
+          "api",
+          API_RULES.QUERYSTRING_TYPE_CONVERSION,
+          "Warning",
+          file,
+          lineNumberFor(content, match.index ?? -1),
+          `检测到 queryString 数值参数 ${identifier} 直接使用，可能存在类型隐式错误。`,
+          "请使用 parseInt/Number 显式转换并设置默认值。",
+        ),
+      );
+    }
   }
 
   return violations;

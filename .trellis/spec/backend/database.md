@@ -306,6 +306,35 @@ const affected = ksql.execute(
 )
 ```
 
+### 复杂查询策略（推荐）
+
+当 ORM 表达复杂查询成本过高时（多表关联、复杂聚合、窗口函数、复杂条件组合），优先使用原生 SQL：
+
+```typescript
+// 复杂查询优先使用参数化 SQL
+const rows = k.DB.sqlite.query(
+    `SELECT m._id, m.userName, COUNT(o._id) AS orderCount
+     FROM members m
+     LEFT JOIN orders o ON o.memberId = m._id
+     WHERE m.status = @status AND o.createdAt >= @from
+     GROUP BY m._id, m.userName`,
+    { status: 'active', from: startTime }
+)
+
+// 复杂批量更新/清理优先使用 execute
+const affected = k.DB.sqlite.execute(
+    `UPDATE members
+     SET level = @level
+     WHERE totalSpend >= @threshold`,
+    { level: 'vip', threshold: 10000 }
+)
+```
+
+注意：
+
+- 必须参数化（`@param` 或 `?`），禁止拼接 SQL 字符串。
+- 优先在 Service 层封装复杂 SQL，不要直接堆在 API 层。
+
 ---
 
 ## 重要注意事项
