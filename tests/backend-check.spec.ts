@@ -12,6 +12,26 @@ async function writeFixtureFile(root: string, rel: string, content: string) {
 }
 
 describe("backend check engine", () => {
+  it("flags MODEL-003 even without ksql.define", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "backend-check-"));
+
+    try {
+      await writeFixtureFile(
+        root,
+        "code/Models/ValidationTemp.ts",
+        "export function badFindAll(User: any) {\n" +
+          "  return User.findAll()\n" +
+          "}\n",
+      );
+
+      const result = await runBackendCheck({ rootDir: root });
+      expect(result.summary.blockerCount).toBeGreaterThan(0);
+      expect(result.violations.some((v) => v.ruleId === "MODEL-003")).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns blocker violations and failed gate", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "backend-check-"));
 

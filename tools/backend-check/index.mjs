@@ -72,20 +72,22 @@ function createViolation(scope, ruleId, severity, file, line, message, suggestio
 
 function runModelRules(file, content) {
   const violations = [];
-  if (!content.includes("ksql.define")) return violations;
 
-  for (const match of content.matchAll(/type\s*:\s*['"`][^'"`]+['"`]/g)) {
-    violations.push(
-      createViolation(
-        "model",
-        MODEL_RULES.INVALID_STRING_TYPE,
-        "Blocker",
-        file,
-        lineNumberFor(content, match.index ?? -1),
-        "Model 字段类型不应使用字符串字面量。",
-        "请使用 DataTypes.String/DataTypes.Number 等类型定义。",
-      ),
-    );
+  // 类型定义规则仅在模型定义上下文生效。
+  if (content.includes("ksql.define")) {
+    for (const match of content.matchAll(/type\s*:\s*['"`][^'"`]+['"`]/g)) {
+      violations.push(
+        createViolation(
+          "model",
+          MODEL_RULES.INVALID_STRING_TYPE,
+          "Blocker",
+          file,
+          lineNumberFor(content, match.index ?? -1),
+          "Model 字段类型不应使用字符串字面量。",
+          "请使用 DataTypes.String/DataTypes.Number 等类型定义。",
+        ),
+      );
+    }
   }
 
   for (const match of content.matchAll(/\.findAll\(\s*\)/g)) {
