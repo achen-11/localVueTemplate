@@ -1,6 +1,6 @@
 # Kooboo 核心 API
 
-> Kooboo 后端开发最常用的核心 API：`k.request`、`k.response`、`k.session`、`k.cookie`、`k.state`、`k.label`。
+> Kooboo 后端开发最常用的核心 API：`k.request`、`k.response`、`k.cookie`、`k.state`、`k.label`。
 
 ---
 
@@ -8,7 +8,6 @@
 
 - [k.request](#krequest--http-请求) - HTTP 请求
 - [k.response](#kresponse--http-响应) - HTTP 响应
-- [k.session](#ksession--会话存储) - 会话存储
 - [k.cookie](#kcookie--cookie-操作) - Cookie 操作
 - [k.state](#kstate--渲染状态) - 渲染状态
 - [k.label / k.t](#klabel--kt--国际化) - 国际化
@@ -209,32 +208,6 @@ k.api.serverError()
 
 ---
 
-## k.session — 会话存储
-
-服务端会话存储，用于在多次请求间保持用户状态。
-
-```javascript
-// 设置会话
-k.session.set('userId', user._id)
-k.session.set('userInfo', { name: 'John', role: 'admin' })
-
-// 获取会话
-const userId = k.session.get('userId')
-const userInfo = k.session.get('userInfo')
-
-// 直接访问
-k.session.newkey = 'value'
-const value = k.session.key
-
-// 删除会话
-k.session.remove('userId')
-
-// 清空所有会话
-k.session.clear()
-```
-
----
-
 ## k.cookie — Cookie 操作
 
 管理客户端 Cookie。
@@ -423,7 +396,6 @@ k.api.post('upload', () => {
 | `k.request.files` | 获取上传文件 |
 | `k.response.json()` | 输出 JSON |
 | `k.response.redirect()` | 重定向 |
-| `k.session.set/get` | 会话存储 |
 | `k.cookie.set/get` | Cookie 操作 |
 | `k.state.set/get` | 模板渲染状态 |
 | `k.label / k.t` | 国际化 |
