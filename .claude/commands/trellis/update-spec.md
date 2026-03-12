@@ -45,7 +45,7 @@ For triggered tasks, include all sections below:
 | **Fixed a bug** | Found a subtle issue with error handling | `backend/error-handling.md` |
 | **Discovered a pattern** | Found a better way to structure code | Relevant `backend/` or `frontend/` file |
 | **Hit a gotcha** | Learned that X must be done before Y | Relevant code-spec + "Common Mistakes" section |
-| **Established a convention** | Team agreed on naming pattern | `quality-guidelines.md` |
+| **Established a convention** | Team agreed on naming pattern | Backend: `backend/20-checklists/release-gate.md`; Frontend: `frontend/quality-guidelines.md` |
 | **New thinking trigger** | "Don't forget to check X before doing Y" | `guides/*.md` (as a checklist item, not detailed rules) |
 
 **Key Insight**: Code-spec updates are NOT just for problems. Every feature implementation contains design decisions and contracts that future AI/developers need to execute safely.

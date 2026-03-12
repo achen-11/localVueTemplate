@@ -16,7 +16,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.spec.ts"],
-    setupFiles: ["tests/kooboo.setup.ts"],
+    setupFiles: ["tests/vitest.setup.ts"],
   },
   plugins: [koobooPlugin()],
 });

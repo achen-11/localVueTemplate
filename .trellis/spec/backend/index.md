@@ -1,114 +1,41 @@
-# Kooboo 后端开发规范
+# Kooboo 后端开发规范（流程中心化版）
 
-> 本规范基于 kooboo-ai-plugins 提供的 Kooboo 开发知识库，用于指导 AI 代理开发 Kooboo 项目后端。
-
----
-
-## 概述
-
-Kooboo 是一个 CMS + 应用开发平台，支持多种前端模式：
-- **Local Vue**：独立 Vue 3 + Vite 应用（推荐）
-- **SSR**：服务端渲染
-- **Script Vue**：内嵌脚本式 Vue
-
-本规范聚焦于 Kooboo 后端开发的核心知识，包括 API、数据库、路由等。
+> 后端规范入口。目标是让 AI 与开发者都能按同一执行协议稳定交付。
 
 ---
 
-## 规范索引
+## 快速开始
 
-| 规范文件 | 说明 |
-|----------|------|
-| [开发步骤](./steps.md) | Models → Services → API 开发流程 |
-| [目录结构](./code-structure.md) | Kooboo 项目目录组织 |
-| [核心 API](./api-core.md) | k.request, k.response, k.session 等 |
-| [数据库操作](./database.md) | k.DB.sqlite, k_sqlite ORM |
-| [路由系统](./routing.md) | @k-url 路由声明语法 |
-| [安全规范](./security.md) | 权限、加密、输入验证 |
-| [交付检查](./quality-guidelines.md) | 代码交付检查清单 |
+先阅读并按顺序执行：
+
+1. [执行协议](./00-protocol.md)
+2. [流程层](./10-workflow/index.md)
+3. [分层清单与总闸门](./20-checklists/release-gate.md)
 
 ---
 
-## 快速入门
+## 新结构索引
 
-### 1. 创建 API 端点
-
-在 `api/` 目录下创建 TypeScript 文件：
-
-```typescript
-// api/user.ts
-// @k-url /api/user/{action}
-
-import { User } from 'code/Models/User'
-
-// GET /api/user/info
-k.api.get('info', (userId: string) => {
-    const user = User.findById(userId)
-    return { success: true, data: user }
-})
-
-// POST /api/user/create
-k.api.post('create', (body) => {
-    const { userName, password } = body
-    const id = User.create({ userName, password })
-    return { success: true, id }
-})
-```
-
-### 2. 创建页面路由
-
-在 `page/` 目录下创建 HTML 文件：
-
-```html
-<!-- page/index.html -->
-<!-- @k-url / -->
-
-<script env="server">
-    k.state.set('title', '首页')
-</script>
-
-<h1>{{ k.state.get('title') }}</h1>
-```
-
-### 3. 数据库操作
-
-```typescript
-// code/Models/User.ts
-import { ksql, DataTypes } from 'module/k_sqlite'
-
-const User = ksql.define('users', {
-    userName: { type: DataTypes.String, required: true },
-    email: { type: DataTypes.String, unique: true },
-    password: { type: DataTypes.String, required: true }
-}, { timestamps: true })
-
-export { User }
-```
+| 层级 | 文件/目录 | 用途 |
+|---|---|---|
+| 协议层 | [00-protocol.md](./00-protocol.md) | 定义固定执行顺序、失败处理、拆分策略 |
+| 流程层 | [10-workflow/](./10-workflow/index.md) | 定义各阶段目标、输入、退出标准 |
+| 清单层 | [20-checklists/](./20-checklists/release-gate.md) | 定义规则、严重级别、交付闸门 |
 
 ---
 
-## 重要约束
+## 核心知识库（保持不变）
 
-| 约束 | 说明 |
-|------|------|
-| 同步操作 | k_sqlite 是**同步**执行，不需要 await |
-| 主键命名 | Kooboo 主键是 `_id`，不是 `id` |
-| Model 引用 | 必须指定文件名，禁止 `code/Models` |
-| API 路由 | 必须添加 `@k-url` 声明 |
-| Vue Router | Local Vue 模式必须使用 hash 模式 |
+- [目录结构](./code-structure.md)
+- [核心 API](./api-core.md)
+- [数据库操作](./database.md)
+- [路由系统](./routing.md)
+- [安全规范](./security.md)
 
 ---
 
-### 4.k-script使用
-1. 如果不确定一个 k-script 方法如何使用, 可以先通过 kooboo.d.ts 文件查看对应的类型定义
+## 执行原则（摘要）
 
-## 规范来源
-
-本规范内容基于 `kooboo-ai-plugins` 项目：
-
-- 技能定义：`.claude/plugins/kooboo-ai-plugins/skills/kooboo-local-vue/`
-- 参考文档：`.claude/plugins/kooboo-ai-plugins/references/`
-
----
-
-**语言**：本文档使用中文编写。
+- 阶段顺序必须固定：`Plan -> Model -> Service -> API -> Verify`
+- `Blocker` 必须修复后继续；`Warning` 允许继续但必须记录
+- 涉及多域、高风险或大范围改动时必须拆分子任务
