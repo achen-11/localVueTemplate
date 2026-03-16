@@ -218,9 +218,6 @@ k.api.serverError()
 // 设置 Cookie（按天数）
 k.cookie.set('token', 'abc123', 7)  // 7 天过期
 
-// 按分钟设置
-k.cookie.setByMinutes('session', 'xyz', 30)  // 30 分钟
-
 // 设置路径
 k.cookie.set('token', 'abc', 7, '/')
 

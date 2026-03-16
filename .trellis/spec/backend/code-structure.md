@@ -102,7 +102,7 @@ project/                          # Kooboo 项目根目录
 import { User } from 'code/Models/User'
 
 k.api.get('user-info', () => {
-    const userId = k.session.get('userId')
+    const userId = k.cookie.get('userId')
     const user = User.findById(userId)
     return { success: true, data: { id: user._id } }
 })
