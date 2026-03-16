@@ -162,9 +162,4 @@ export const userApi = {
 
 ## 规范来源
 
-- Kooboo Local Vue 技能：`.claude/plugins/kooboo-ai-plugins/skills/kooboo-local-vue/`
-- Kooboo 参考文档：`.claude/plugins/kooboo-ai-plugins/references/`
-
----
-
 **语言**：本文档使用中文编写。
