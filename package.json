@@ -11,6 +11,9 @@
   "scripts": {
     "dev": "kb sync",
     "test": "vitest",
-    "build": "bash build.sh"
+    "build": "bash build.sh",
+    "backend:check": "node ./tools/backend-check/cli.mjs",
+    "backend:check:json": "node ./tools/backend-check/cli.mjs --json",
+    "backend:workflow": "node ./tools/backend-check/workflow.mjs"
   }
 }

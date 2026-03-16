@@ -234,7 +234,7 @@ python3 ./.trellis/scripts/task.py create "<title>" --slug <task-name>
 
 **Project-specific checks**:
 - See `.trellis/spec/frontend/quality-guidelines.md` for frontend
-- See `.trellis/spec/backend/quality-guidelines.md` for backend
+- See `.trellis/spec/backend/20-checklists/release-gate.md` for backend
 
 ---
 

@@ -82,7 +82,7 @@ def write_prd_backend_section() -> str:
 | `.trellis/spec/backend/database-guidelines.md` | ORM, migrations, query patterns, naming conventions |
 | `.trellis/spec/backend/error-handling.md` | How errors are caught, logged, and returned |
 | `.trellis/spec/backend/logging-guidelines.md` | Log levels, format, what to log |
-| `.trellis/spec/backend/quality-guidelines.md` | Code review standards, testing requirements |
+| `.trellis/spec/backend/20-checklists/release-gate.md` | Backend gate checks and release decision rules |
 """
 
 

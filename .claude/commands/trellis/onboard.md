@@ -327,11 +327,13 @@ Then systematically analyze the codebase and fill each guideline file:
 4. **List forbidden patterns** - Document anti-patterns the team avoids
 
 Work through one file at a time:
-- `backend/directory-structure.md`
-- `backend/database-guidelines.md`
-- `backend/error-handling.md`
-- `backend/quality-guidelines.md`
-- `backend/logging-guidelines.md`
+- `backend/index.md`
+- `backend/00-protocol.md`
+- `backend/10-workflow/index.md`
+- `backend/20-checklists/model-checklist.md`
+- `backend/20-checklists/service-checklist.md`
+- `backend/20-checklists/api-checklist.md`
+- `backend/20-checklists/release-gate.md`
 - `frontend/directory-structure.md`
 - `frontend/component-guidelines.md`
 - `frontend/hook-guidelines.md`

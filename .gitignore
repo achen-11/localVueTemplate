@@ -157,3 +157,5 @@ kooboo.d.ts
 .build-manifest.json
 
 .cursor
+
+.trellis/tasks/*
