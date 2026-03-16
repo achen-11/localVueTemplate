@@ -237,6 +237,34 @@ function runApiRules(file, content) {
     );
   }
 
+  // 间接 body 访问模式：先赋值 const body = k.request.body，再通过 body.xxx 读取。
+  const bodyAliasPattern = /const\s+([A-Za-z_$][\w$]*)\s*=\s*k\.request\.body\b/g;
+  const bodyAliases = [];
+  for (const match of content.matchAll(bodyAliasPattern)) {
+    const alias = match[1];
+    if (!alias) continue;
+    bodyAliases.push({ alias, index: match.index ?? -1 });
+  }
+
+  for (const { alias, index } of bodyAliases) {
+    // 查找后续对 alias.xxx 的属性访问
+    const propertyAccess = new RegExp(`\\b${alias}\\.[A-Za-z_$][\\w$]*`, "g");
+    let propertyMatch;
+    while ((propertyMatch = propertyAccess.exec(content)) !== null) {
+      violations.push(
+        createViolation(
+          "api",
+          API_RULES.RAW_BODY_USAGE,
+          "Blocker",
+          file,
+          lineNumberFor(content, propertyMatch.index ?? index),
+          "检测到通过中间变量访问未解析的 k.request.body。",
+          "请先 JSON.parse(k.request.body) 再将结果赋值给中间变量并读取字段。",
+        ),
+      );
+    }
+  }
+
   // k.request.body 虽可通过 unknown 桥接做类型断言，但若未 JSON.parse，
   // 实际仍是字符串语义，属于 API-002。
   for (const match of content.matchAll(/k\.request\.body\s+as\s+unknown\s+as\s+[A-Za-z_$][\w$]*/g)) {

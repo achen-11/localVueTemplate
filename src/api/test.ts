@@ -1,5 +1,9 @@
 // @k-url /api/test
 
-k.api.get(()=>{
-    return "this is a test api"
+k.api.post(()=>{
+    const body = k.request.body
+    return {
+        success: true,
+        data: body.name
+    }
 })
