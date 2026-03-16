@@ -12,6 +12,7 @@
 | GATE-002 | Blocker | Service 层 Blocker 全部通过 | 未通过则禁止交付 |
 | GATE-003 | Blocker | API 层 Blocker 全部通过 | 未通过则禁止交付 |
 | GATE-004 | Warning | Warning 项已汇总并附处理建议 | 未满足则允许交付但标注风险 |
+| GATE-005 | Warning | 部署验证已完成（如启用） | 未满足则允许交付但标注风险 |
 
 ---
 
@@ -23,6 +24,7 @@ Backend Check Report
 - Service: PASS/FAIL
 - API: PASS/FAIL
 - Warnings: <count>
+- Deploy Test: SKIP/PASS/FAIL (if enabled)
 - Final Gate: PASS/FAIL
 ```
 
