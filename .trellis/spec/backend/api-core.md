@@ -378,9 +378,22 @@ k.api.post('upload', () => {
 
     const file = k.request.files[0]
     const fileName = Date.now() + '_' + file.fileName
-    file.save('uploads/' + fileName)
+    const fileResult = file.save('uploads/' + fileName)
 
-    return { success: true, url: '/media/uploads/' + fileName }
+    //example fileResult 
+    // fileResult返回的: {
+    // "name": "1773281896322_alectc.png",
+    // "fullName": "uploads/1773281896322_alectc.png",
+    // "size": 27077,
+    // "stringSize": "26.44KB",
+    // "relativeUrl": "/__kb/kfile/uploads/1773281896322_alectc.png",
+    // "absoluteUrl": "http://travel.redev.cn/__kb/kfile/uploads/1773281896322_alectc.png",
+    // "url": "/__kb/kfile/uploads/1773281896322_alectc.png",
+    // "lastModified": "2026-03-12T10:18:16.3181831+08:00",
+    // "authorUserName": null
+    // }
+
+    return { success: true, url: fileResult.url }
 })
 ```
 
