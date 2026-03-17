@@ -13,6 +13,7 @@ const SERVICE_RULES = {
   AWAIT_SYNC_KSQL: "SERVICE-003",
   MONGO_STYLE_OPERATORS: "SERVICE-006",
   MISSING_OPERATORS_IMPORT: "SERVICE-007",
+  FIND_ALL_LIMIT_OFFSET: "SERVICE-008",
 };
 
 const API_RULES = {
@@ -157,7 +158,18 @@ function runServiceRules(file, content) {
     );
   }
 
-  for (const match of content.matchAll(/\$(gte|lte|ne|contains|or)\b/g)) {
+  // 支持 Operators 的操作符
+  const operatorsWithReplacement = ['$gt', '$gte', '$lt', '$lte', '$ne', '$or', '$and', '$contains'];
+  // 不支持、需要使用原生 SQL 的操作符
+  const operatorsNeedNativeSql = ['$in', '$nin', '$all', '$exists', '$type', '$not', '$regex', '$size', '$like'];
+
+  const allMongoOps = [...operatorsWithReplacement, ...operatorsNeedNativeSql];
+  const mongoOpsPattern = new RegExp('\\$(' + allMongoOps.map(op => op.slice(1)).join('|') + ')\\b', 'g');
+
+  for (const match of content.matchAll(mongoOpsPattern)) {
+    const operator = '$' + match[1];
+    const needsNativeSql = operatorsNeedNativeSql.includes(operator);
+
     violations.push(
       createViolation(
         "service",
@@ -166,12 +178,14 @@ function runServiceRules(file, content) {
         file,
         lineNumberFor(content, match.index ?? -1),
         "检测到 MongoDB 风格操作符，不适用于 k_sqlite。",
-        "请改用 Operators，并使用 [GTE]/[LTE]/[NE]/[CONTAINS]/[OR]。",
+        needsNativeSql
+          ? `k_sqlite 不支持 ${operator} 操作符，请改用原生 SQL（k.DB.sqlite.query）进行查询。`
+          : "请改用 Operators，并使用 [GT]/[GTE]/[LT]/[LTE]/[NE]/[OR]/[AND]/[CONTAINS]。",
       ),
     );
   }
 
-  const usesOperatorTokens = /\[(GTE|LTE|NE|CONTAINS|OR)\]/.test(content);
+  const usesOperatorTokens = /\[(GT|GTE|LT|LTE|NE|OR|AND|CONTAINS)\]/.test(content);
   const importsOperators =
     /import\s*\{[^}]*\bOperators\b[^}]*\}\s*from\s*['"]module\/k_sqlite['"]/.test(content) ||
     /import\s+Operators\s+from\s*['"]module\/k_sqlite['"]/.test(content);
@@ -187,6 +201,36 @@ function runServiceRules(file, content) {
         "请从 module/k_sqlite 导入 Operators 并解构所需操作符。",
       ),
     );
+  }
+
+  // 检查 findAll 使用 limit/offset（k_sqlite 不支持）
+  // 简化方法：找到 findAll( 之后，检查是否有 }, 后面跟 limit/offset
+  const findAllPattern = /\.findAll\(/g;
+  let match;
+  while ((match = findAllPattern.exec(content)) !== null) {
+    const startIdx = match.index;
+    // 找到这个 findAll( 之后的 300 个字符
+    const snippet = content.substring(startIdx, startIdx + 300);
+
+    // 找到第一个 }, 位置（表示第一个参数结束）
+    const firstParamEnd = snippet.indexOf('},');
+    if (firstParamEnd > 0 && firstParamEnd < 200) {
+      // 检查 }, 之后是否包含 limit 或 offset
+      const afterSecondParam = snippet.substring(firstParamEnd);
+      if (/\b(limit|offset)\b/.test(afterSecondParam)) {
+        violations.push(
+          createViolation(
+            "service",
+            SERVICE_RULES.FIND_ALL_LIMIT_OFFSET,
+            "Blocker",
+            file,
+            lineNumberFor(content, startIdx),
+            "检测到 findAll 使用 limit/offset，k_sqlite 不支持这些选项。",
+            "请改用原生 SQL（k.DB.sqlite.query）进行分页查询。",
+          ),
+        );
+      }
+    }
   }
 
   return violations;
@@ -325,7 +369,8 @@ function runApiRules(file, content) {
     );
   }
 
-  for (const match of content.matchAll(/k\.request\.body\s+as\s+any|:\s*any\b/g)) {
+  // 只检查 k.request.body 相关的 any 用法，catch (e: any) 是允许的
+  for (const match of content.matchAll(/k\.request\.body\s+as\s+any/g)) {
     violations.push(
       createViolation(
         "api",
