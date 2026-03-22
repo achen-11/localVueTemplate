@@ -27,6 +27,10 @@ const API_RULES = {
   BODY_DIRECT_ASSERTION: "API-010",
 };
 
+const LOGGING_RULES = {
+  CONSOLE_USAGE: "LOG-001",
+};
+
 function lineNumberFor(content, index) {
   if (index < 0) return 1;
   return content.slice(0, index).split("\n").length;
@@ -471,6 +475,27 @@ function runApiRules(file, content) {
   return violations;
 }
 
+function runLoggingRules(file, content) {
+  const violations = [];
+
+  // LOG-001: 禁止使用 console（Kooboo 没有 console 对象）
+  for (const match of content.matchAll(/console\.(log|warn|error|info|debug)\s*\(/g)) {
+    violations.push(
+      createViolation(
+        "logging",
+        LOGGING_RULES.CONSOLE_USAGE,
+        "Blocker",
+        file,
+        lineNumberFor(content, match.index ?? -1),
+        "检测到 console 使用。Kooboo 服务端没有 console 对象。",
+        "请改用 k.logger.debug/information/warning/error。",
+      ),
+    );
+  }
+
+  return violations;
+}
+
 function summarize(violations) {
   const blockerCount = violations.filter((v) => v.severity === "Blocker").length;
   const warningCount = violations.filter((v) => v.severity === "Warning").length;
@@ -484,6 +509,7 @@ function summarize(violations) {
     model: scopeStatus("model"),
     service: scopeStatus("service"),
     api: scopeStatus("api"),
+    logging: scopeStatus("logging"),
     finalGate,
   };
 }
@@ -506,6 +532,7 @@ export async function runBackendCheck(options = {}) {
   for (const pair of modelPairs) violations.push(...runModelRules(pair.file, pair.content));
   for (const pair of servicePairs) violations.push(...runServiceRules(pair.file, pair.content));
   for (const pair of apiPairs) violations.push(...runApiRules(pair.file, pair.content));
+  for (const pair of servicePairs) violations.push(...runLoggingRules(pair.file, pair.content));
 
   return {
     summary: summarize(violations),

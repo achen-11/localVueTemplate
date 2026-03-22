@@ -181,6 +181,26 @@ describe("backend check engine", () => {
     }
   });
 
+  it("flags console usage in service files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "backend-check-"));
+
+    try {
+      await writeFixtureFile(
+        root,
+        "code/Services/AdminLogService.ts",
+        "export function logAdminAction(params) {\n" +
+          "  console.warn('No logged in user, cannot log action')\n" +
+          "}\n",
+      );
+
+      const result = await runBackendCheck({ rootDir: root });
+      expect(result.violations.some((v) => v.ruleId === "LOG-001")).toBe(true);
+      expect(result.summary.finalGate).toBe("FAIL");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("passes clean files and returns PASS gate", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "backend-check-"));
 

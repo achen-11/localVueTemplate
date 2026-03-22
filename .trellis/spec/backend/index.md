@@ -31,6 +31,7 @@
 - [数据库操作](./database.md)
 - [路由系统](./routing.md)
 - [安全规范](./security.md)
+- [日志规范](./logging-guidelines.md) - Kooboo 必须使用 k.logger，禁止 console
 - [Auth Case 规范](./auth-cases.md) - 用户密码/验证码登录、注册、忘记密码流程
 
 ---

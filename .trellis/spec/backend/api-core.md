@@ -218,6 +218,9 @@ k.api.serverError()
 // 设置 Cookie（按天数）
 k.cookie.set('token', 'abc123', 7)  // 7 天过期
 
+// 按分钟设置
+k.cookie.setByMinutes('session', 'xyz', 30)  // 30 分钟
+
 // 设置路径
 k.cookie.set('token', 'abc', 7, '/')
 
@@ -375,22 +378,9 @@ k.api.post('upload', () => {
 
     const file = k.request.files[0]
     const fileName = Date.now() + '_' + file.fileName
-    const fileResult = file.save('uploads/' + fileName)
+    file.save('uploads/' + fileName)
 
-    //example fileResult 
-    // fileResult返回的: {
-    // "name": "1773281896322_alectc.png",
-    // "fullName": "uploads/1773281896322_alectc.png",
-    // "size": 27077,
-    // "stringSize": "26.44KB",
-    // "relativeUrl": "/__kb/kfile/uploads/1773281896322_alectc.png",
-    // "absoluteUrl": "http://travel.redev.cn/__kb/kfile/uploads/1773281896322_alectc.png",
-    // "url": "/__kb/kfile/uploads/1773281896322_alectc.png",
-    // "lastModified": "2026-03-12T10:18:16.3181831+08:00",
-    // "authorUserName": null
-    // }
-
-    return { success: true, url: fileResult.url }
+    return { success: true, url: '/media/uploads/' + fileName }
 })
 ```
 

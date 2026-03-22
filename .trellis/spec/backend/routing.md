@@ -232,7 +232,7 @@ k.api.post('login', (body) => {
     }
 
     // 密码验证...
-    k.cookie.set('userId', user._id)
+    k.session.set('userId', user._id)
     return { success: true, data: { id: user._id } }
 })
 
@@ -252,7 +252,7 @@ k.api.post('register', (body) => {
 
 // POST /api/user/logout
 k.api.post('logout', () => {
-    k.cookie.remove('userId')
+    k.session.remove('userId')
     return { success: true }
 })
 ```
