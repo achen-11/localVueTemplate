@@ -164,10 +164,67 @@ const Product = ksql.define('products', {
     },
     category: {
         type: DataTypes.String,
-        ref: { tableName: 'categories', fieldName: 'id' }  // 外键引用
+        ref: { tableName: 'categories', fieldName: 'id', onDelete: 'CASCADE' }  // 外键引用
     }
 }, { timestamps: true })
 ```
+
+### 外键引用（ref）
+
+`ref` 选项用于定义字段的外键约束：
+
+```typescript
+ref: {
+    tableName: string;      // 关联的表名
+    fieldName: string;      // 关联的字段名
+    onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' | 'SET DEFAULT';
+    onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' | 'SET DEFAULT';
+}
+```
+
+**onDelete 行为说明：**
+
+| 行为 | 说明 |
+|------|------|
+| `CASCADE` | 级联删除，当父表记录被删除时，自动删除子表相关记录 |
+| `SET NULL` | 设置为 NULL（要求字段允许为 NULL） |
+| `RESTRICT` | 阻止删除父表记录（如果存在子表记录） |
+| `NO ACTION` | 不采取任何行动（延迟检查） |
+| `SET DEFAULT` | 设置为默认值 |
+
+**Join Table（关联表）必须使用 `onDelete: 'CASCADE'`：**
+
+Join Table 是专门用于表示多对多关系的表，删除父表记录时必须自动清理关联记录：
+
+```typescript
+// ✅ 正确：Join Table 必须设置 onDelete: 'CASCADE'
+const Forum_Post_Tag = ksql.define('Forum_Post_Tag', {
+    postId: {
+        type: DataTypes.String,
+        required: true,
+        ref: { tableName: 'Forum_Post', fieldName: '_id', onDelete: 'CASCADE' },
+        index: true
+    },
+    tagId: {
+        type: DataTypes.String,
+        required: true,
+        ref: { tableName: 'Forum_Tag', fieldName: '_id', onDelete: 'CASCADE' },
+        index: true
+    }
+})
+
+// ✅ 正确：普通业务表可选择合适的 onDelete 策略
+const Forum_Post = ksql.define('Forum_Post', {
+    authorId: {
+        type: DataTypes.String,
+        required: true,
+        ref: { tableName: 'Forum_User', fieldName: '_id' },  // 不设置 onDelete，保持数据完整性
+        index: true
+    }
+})
+```
+
+常见的 Join Table 命名模式：`*_*`（如下划线分隔的两个实体）：`Forum_Post_Tag`、`Forum_Collection`、`Forum_Follow`、`Forum_Like`
 
 ---
 
